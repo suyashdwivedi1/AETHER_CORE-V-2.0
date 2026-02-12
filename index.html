@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AETHER | Rescue Command</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Share+Tech+Mono&family=Inter:wght@300;600&display=swap" rel="stylesheet">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+
+    <link rel="stylesheet" href="style.css">
+
+    <style>
+        body { background-color: #000; color: #fff; margin: 0; overflow-x: hidden; }
+        #canvas-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; }
+    </style>
+</head>
+<body>
+
+    <div id="loader-screen">
+        <div class="loader-content">
+            <h1 class="loader-title">AETHER</h1>
+            <div class="terminal-text" id="terminal-output">> INITIALIZING...</div>
+            <div class="progress-bar-wrapper"><div class="progress-bar" id="progress-bar"></div></div>
+        </div>
+    </div>
+
+    <div class="hud-layer">
+        <div class="hud-item top-left">
+            <span>// SAT-LINK: ACTIVE</span>
+        </div>
+        <div class="hud-item top-right">
+            <span id="utc-clock">00:00:00 UTC</span>
+        </div>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <main id="main-interface">
+        <section id="hero">
+            <h1 class="hero-title">AETHER</h1>
+            <p class="hero-subtitle">AUTONOMOUS SURVIVOR DETECTION UNIT</p>
+            <div class="scroll-prompt">
+                <span>SCROLL TO BEGIN</span>
+                <div class="arrow">↓</div>
+            </div>
+        </section>
+
+        <section id="workspace">
+            <div class="panel-container">
+                <div class="panel-header">
+                    <span class="status-light"></span> LIVE FEED INPUT
+                </div>
+
+                <div class="upload-zone" id="drop-zone">
+                    <div class="zone-content">
+                        <p class="zone-text">CLICK TO UPLOAD IMAGERY</p>
+                    </div>
+                    <input type="file" id="imageInput" accept="image/*" hidden>
+
+                    <div id="preview-container">
+                        <img id="preview-img" alt="Uploaded Feed">
+                        <div class="scan-laser"></div>
+                        <div class="scan-overlay"></div>
+                    </div>
+                </div>
+
+                <button id="processBtn" class="action-btn" disabled>INITIATE ANALYSIS</button>
+                <div class="console-log" id="console-output"><p class="log-line">> WAITING FOR INPUT...</p></div>
+            </div>
+        </section>
+    </main>
+
+    <section id="team-section">
+        <div class="team-container">
+            <button id="back-btn" class="back-btn">← RETURN TO COMMAND</button>
+            <h2 class="team-title">DEVELOPER LOGS</h2>
+            <div class="profile-card">
+                <div class="profile-icon">ADM</div>
+                <div class="profile-info">
+                    <h3>YOUR NAME</h3>
+                    <p class="role">PROJECT ARCHITECT</p>
+                    <p class="bio">Lead Developer & System Architect.</p>
+                </div>
+            </div>
+            <div class="profile-card">
+                <div class="profile-icon">OPS</div>
+                <div class="profile-info">
+                    <h3>PARTNER NAME</h3>
+                    <p class="role">DATA ANALYST</p>
+                    <p class="bio">Geospatial Data & Thermal Calibration.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer id="main-footer">
+        <div class="footer-content">
+            <span>SYSTEM V.2.4</span>
+            <span class="separator">|</span>
+            <a href="#" id="team-link" class="footer-link">VIEW PERSONNEL FILES</a>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
