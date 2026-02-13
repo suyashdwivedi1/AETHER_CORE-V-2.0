@@ -1,201 +1,132 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- 1. BOOT SEQUENCE ---
+    // 1. BOOT SEQUENCE
     const terminal = document.getElementById('terminal-output');
     const progBar = document.getElementById('progress-bar');
-    const lines = ["SYSTEM CHECK...", "CONNECTING SATELLITE...", "ACCESS GRANTED."];
-    let i = 0;
-
+    const lines = ["MOUNTING SATELLITE INTERFACE...", "ENCRYPTING CHANNEL...", "AETHER V.2.0 ONLINE."];
+    let step = 0;
     function runBoot() {
-        if(i < lines.length && terminal) {
-            terminal.innerText = `> ${lines[i]}`;
-            if(progBar) progBar.style.width = `${((i+1)/lines.length)*100}%`;
-            i++;
-            setTimeout(runBoot, 800);
+        if(step < lines.length) {
+            terminal.innerText = `> ${lines[step]}`;
+            progBar.style.width = `${((step + 1) / lines.length) * 100}%`;
+            step++;
+            setTimeout(runBoot, 1000);
         }
     }
     runBoot();
 
-    // --- 2. PAGE NAVIGATION ---
-    const mainInterface = document.getElementById('main-interface');
-    const teamSection = document.getElementById('team-section');
-    const teamLink = document.getElementById('team-link');
-    const backBtn = document.getElementById('back-btn');
+    // 2. THREE.JS GLOBE (Large Frame + 70% Zoom)
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    container.appendChild(renderer.domElement);
 
-    if(teamLink && backBtn) {
-        teamLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            mainInterface.style.display = 'none';
-            teamSection.classList.add('active');
-        });
+    const globeGroup = new THREE.Group();
+    scene.add(globeGroup);
 
-        backBtn.addEventListener('click', () => {
-            teamSection.classList.remove('active');
-            mainInterface.style.display = 'block';
-        });
+    const geometry = new THREE.SphereGeometry(10, 50, 50);
+    const material = new THREE.PointsMaterial({ color: 0x00f2ff, size: 0.05, transparent: true, opacity: 0.4 });
+    const globeDots = new THREE.Points(geometry, material);
+    globeGroup.add(globeDots);
+
+    // Initial positioning closer to frame text
+    camera.position.z = 12.5; 
+    let scrollVelocity = 0;
+    let lastScrollPos = window.scrollY;
+
+    window.addEventListener('scroll', () => {
+        const currentScroll = window.scrollY;
+        scrollVelocity = (currentScroll - lastScrollPos) * 0.05;
+        
+        // 70% Zoom Logic: From 12.5 down to 3.75
+        const maxScroll = 2500; 
+        const scrollFactor = Math.min(currentScroll / maxScroll, 1);
+        camera.position.z = 12.5 - (scrollFactor * 8.75);
+        
+        lastScrollPos = currentScroll;
+    });
+
+    function animate() {
+        requestAnimationFrame(animate);
+        const baseSpeed = 0.0008; 
+        globeGroup.rotation.y += baseSpeed + (scrollVelocity * 0.1);
+        globeGroup.rotation.x += baseSpeed * 0.5;
+        scrollVelocity *= 0.95; 
+        renderer.render(scene, camera);
     }
+    animate();
 
-    // --- 3. UPLOAD & PREVIEW LOGIC ---
-    const dropZone = document.getElementById('drop-zone');
-    const fileInput = document.getElementById('imageInput');
-    const previewContainer = document.getElementById('preview-container');
-    const previewImg = document.getElementById('preview-img');
+    // 3. UI LOGIC
     const processBtn = document.getElementById('processBtn');
+    const detailsBtn = document.getElementById('detailsBtn');
+    const previewContainer = document.getElementById('preview-container');
+    const detailsModal = document.getElementById('details-modal');
+    const closeModal = document.getElementById('close-modal');
+    const modalBody = document.getElementById('modal-body');
     const consoleLog = document.getElementById('console-output');
 
-    if(dropZone && fileInput) {
-        dropZone.addEventListener('click', () => fileInput.click());
+    // Navigation
+    document.getElementById('enter-btn').onclick = () => document.getElementById('workspace').scrollIntoView({ behavior: 'smooth' });
+    document.getElementById('team-link').onclick = (e) => { e.preventDefault(); document.getElementById('team-section').classList.add('active'); };
+    document.getElementById('back-btn').onclick = () => document.getElementById('team-section').classList.remove('active');
 
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if(file) {
-                const reader = new FileReader();
-                reader.onload = (evt) => {
-                    if(previewImg) previewImg.src = evt.target.result;
-                    if(previewContainer) previewContainer.classList.add('active');
-
-                    const text = document.querySelector('.zone-content');
-                    if(text) text.style.display = 'none';
-
-                    if(processBtn) processBtn.disabled = false;
-                    log("IMAGE BUFFERED. READY FOR CHAIN.");
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-    }
-
-    // --- 4. BLOCKCHAIN TRANSACTION LOGIC (UPDATED) ---
-    if(processBtn) {
-        processBtn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            processBtn.disabled = true;
-            processBtn.innerText = "CONNECTING WALLET...";
-
-            // 1. Check for Metamask
-            if (typeof window.ethereum !== 'undefined') {
-                try {
-                    // Request Wallet Connection
-                    log("REQUESTING WALLET ACCESS...");
-                    await window.ethereum.request({ method: 'eth_requestAccounts' });
-
-                    const provider = new ethers.providers.Web3Provider(window.ethereum);
-                    const signer = provider.getSigner();
-
-                    // *** CONFIGURATION ***
-                    // Replace with your DEPLOYED CONTRACT ADDRESS from Remix
-                    const contractAddress = "0xYOUR_DEPLOYED_CONTRACT_ADDRESS_HERE";
-
-                    // The ABI (Interface)
-                    const abi = [
-                        "function recordRescue(string memory _missionId, string memory _coordinates) public",
-                        "event SurvivorDetected(string indexed missionId, string coordinates, uint256 timestamp)"
-                    ];
-
-                    const contract = new ethers.Contract(contractAddress, abi, signer);
-
-                    // Prepare Data (Constraint: Fixed Dataset ID)
-                    const missionID = "DATASET_IMG_" + Math.floor(Math.random() * 9999);
-                    const coords = "28.6139N, 77.2090E";
-
-                    log(`PREPARING TRANSACTION FOR ID: ${missionID}`);
-                    processBtn.innerText = "SIGN TRANSACTION...";
-
-                    // Send Transaction
-                    const tx = await contract.recordRescue(missionID, coords);
-
-                    log(`TX SENT! HASH: ${tx.hash.substring(0,15)}...`);
-                    processBtn.innerText = "MINING...";
-
-                    // Wait for Confirmation
-                    await tx.wait();
-
-                    log("SUCCESS: DATA IMMUTABLE ON-CHAIN.");
-                    log(`MISSION ID: ${missionID}`);
-
-                    processBtn.innerText = "SAVED TO BLOCKCHAIN";
-                    processBtn.style.borderColor = "#0f0";
-                    processBtn.style.color = "#0f0";
-
-                } catch (error) {
-                    console.error(error);
-                    log("ERROR: " + (error.reason || error.message));
-                    processBtn.innerText = "FAILED (SEE LOG)";
-                    processBtn.style.borderColor = "#f00";
-                    processBtn.style.color = "#f00";
-                    processBtn.disabled = false; // Let them try again
-                }
-            } else {
-                log("ERROR: METAMASK NOT INSTALLED!");
-                alert("Please install MetaMask to use the Blockchain features.");
+    // Upload
+    const fileInput = document.getElementById('imageInput');
+    const dropZone = document.getElementById('drop-zone');
+    const previewImg = document.getElementById('preview-img');
+    dropZone.onclick = () => fileInput.click();
+    fileInput.onchange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                previewImg.src = event.target.result;
+                previewContainer.classList.add('active');
                 processBtn.disabled = false;
-            }
-        });
-    }
+                log("IMAGE BUFFERED. READY FOR X-RAY SCAN.");
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    // Computation & X-Ray
+    processBtn.onclick = () => {
+        processBtn.disabled = true;
+        processBtn.innerText = "COMPUTING...";
+        
+        // Add CSS class to trigger the green laser animation
+        previewContainer.classList.add('scanning');
+        
+        // Scroll down to center workspace
+        window.scrollBy({ top: 350, behavior: 'smooth' });
+        log("INITIATING MULTI-SPECTRAL X-RAY...");
+
+        setTimeout(() => {
+            previewContainer.classList.remove('scanning');
+            processBtn.innerText = "COMPLETE";
+            detailsBtn.style.display = 'block'; // Reveal Details button
+            log("SCAN FINISHED. SURVIVOR PROBABILITY: 0.2%");
+        }, 4000);
+    };
+
+    // Modal
+    detailsBtn.onclick = () => {
+        modalBody.innerHTML = `
+            <p><strong>MISSION ID:</strong> AETHER-${Math.floor(Math.random()*10000)}</p>
+            <p><strong>LOCATION:</strong> 28.6139° N, 77.2090° E</p>
+            <p><strong>THERMAL SIGNATURES:</strong> NONE DETECTED</p>
+            <p><strong>FLOODING SEVERITY:</strong> MODERATE</p>
+            <p><strong>AI CONFIDENCE:</strong> 99.1%</p>
+        `;
+        detailsModal.style.display = 'flex';
+    };
+    closeModal.onclick = () => detailsModal.style.display = 'none';
 
     function log(msg) {
-        if(consoleLog) {
-            const p = document.createElement('p');
-            p.innerText = `> ${msg}`;
-            consoleLog.prepend(p);
-        }
+        const p = document.createElement('p');
+        p.innerText = `> ${msg}`;
+        consoleLog.prepend(p);
     }
-
-    // Clock
-    setInterval(() => {
-        const clock = document.getElementById('utc-clock');
-        if(clock) clock.innerText = new Date().toISOString().split('T')[1].split('.')[0] + ' UTC';
-    }, 1000);
-
-    // --- 5. THREE.JS BACKGROUND ---
-    try {
-        if (typeof THREE !== 'undefined') {
-            const container = document.getElementById('canvas-container');
-            if(container) {
-                const scene = new THREE.Scene();
-                const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-                const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-                renderer.setSize(window.innerWidth, window.innerHeight);
-                container.appendChild(renderer.domElement);
-
-                const globeGroup = new THREE.Group();
-                scene.add(globeGroup);
-
-                const core = new THREE.Mesh(
-                    new THREE.SphereGeometry(10, 32, 32),
-                    new THREE.MeshBasicMaterial({ color: 0x000000 })
-                );
-                globeGroup.add(core);
-
-                const partGeo = new THREE.BufferGeometry();
-                const partPos = [];
-                for(let i=0; i<1500; i++) {
-                    const r = 10.1;
-                    const theta = Math.random() * Math.PI * 2;
-                    const phi = Math.acos(2 * Math.random() - 1);
-                    partPos.push(r * Math.sin(phi) * Math.cos(theta), r * Math.sin(phi) * Math.sin(theta), r * Math.cos(phi));
-                }
-                partGeo.setAttribute('position', new THREE.Float32BufferAttribute(partPos, 3));
-                const particles = new THREE.Points(
-                    partGeo,
-                    new THREE.PointsMaterial({ color: 0x00f2ff, size: 0.1, transparent: true, opacity: 0.6 })
-                );
-                globeGroup.add(particles);
-
-                camera.position.z = 24;
-
-                function animate() {
-                    requestAnimationFrame(animate);
-                    globeGroup.rotation.y += 0.002;
-                    renderer.render(scene, camera);
-                }
-                animate();
-
-                window.addEventListener('scroll', () => {
-                    const scrollPer = window.scrollY / (window.innerHeight * 0.8);
-                    globeGroup.position.z = -(scrollPer * 10);
-                });
-            }
-        }
-    } catch(e) { console.log("3D Error", e); }
 });
